@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - The Kubernetes authentication `/inject-client-cert` endpoint now generates
   an authentication audit event with the `k8s-inject-client-cert` operation
   ([cyberark/conjur#1538](https://github.com/cyberark/conjur/issues/1538)).
+- Set openssl version to 1.0.2
+- Enable FIPS
 
 ## [1.6.0] - 2020-04-14
 

@@ -36,26 +36,6 @@ pipeline {
       }
     }
 
-    stage('Scan Docker Image') {
-      parallel {
-        stage("Scan Docker Image for fixable issues") {
-          steps {
-            script {
-              TAG = sh(returnStdout: true, script: 'echo $(< VERSION)-$(git rev-parse --short HEAD)')
-            }
-            scanAndReport("conjur:${TAG}", "HIGH", false)
-          }
-        }
-        stage("Scan Docker image for total issues") {
-          steps {
-            script {
-              TAG = sh(returnStdout: true, script: 'echo $(< VERSION)-$(git rev-parse --short HEAD)')
-            }
-            scanAndReport("conjur:${TAG}", "NONE", true)
-          }
-        }
-      }
-    }
 
     stage('Prepare For CodeClimate Coverage Report Submission'){
       steps {

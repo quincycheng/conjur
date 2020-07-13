@@ -12,7 +12,7 @@ module Authentication
       validate_origin:                     ::Authentication::ValidateOrigin.new,
       audit_log:                           ::Audit.logger
     },
-    inputs:       %i(authenticator_input authenticators enabled_authenticators)
+    inputs:       %i(request_headers authenticator_input authenticators enabled_authenticators)
   ) do
 
     extend Forwardable
@@ -66,11 +66,15 @@ module Authentication
     end
 
     def validate_origin
-      @validate_origin.(
-        account: account,
-        username: username,
-        client_ip: client_ip
-      )
+      if (authenticator.respond_to?('validate_origin'))
+        authenticator.validate_origin(authenticator_input: @authenticator_input)
+      else
+        @validate_origin.(
+          account: account,
+          username: username,
+          client_ip: client_ip
+        )
+      end
     end
 
     def audit_success

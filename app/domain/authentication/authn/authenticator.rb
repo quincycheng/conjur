@@ -42,6 +42,11 @@ module Authentication
         false
       end
 
+      def validate_origin(authenticator_input: input)
+        # raise Error unless ValidateProxy.new.(authenticator_input: input)
+        true
+      end
+
       def login(input)
         ::Authentication::Authn::Login.new.(authenticator_input: input)
       end

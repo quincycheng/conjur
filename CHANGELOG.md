@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+- The `TRUSTED_PROXIES` environment variable now works correctly again after the
+  Rails 5 upgrade. This is to indicate trusted proxy IP addresses when using the
+  `X-Forwarded-For` HTTP header to identity the true client IP address of a request.
+  [cyberark/conjur#1689](https://github.com/cyberark/conjur/issues/1689)
+
 ### Changed
 - Uses OpenSSL 1.0.2u to support FIPS compliance
   ([cyberark/conjur#1527](https://github.com/cyberark/conjur/issues/1527))

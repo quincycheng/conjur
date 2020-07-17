@@ -27,18 +27,16 @@ module Conjur
       @cached_trusted_proxies || load_trusted_proxies_from_env
     end
 
+    # Reek flags @env['TRUSTED_PROXIES'] as :reek:DuplicateMethodCall. Refactoring
+    # this would not enhance the readability or performance.
     def load_trusted_proxies_from_env
-      return nil unless env_trusted_proxies
+      return nil unless @env['TRUSTED_PROXIES']
 
-      proxy_ips = Set.new(env_trusted_proxies.split(',') + ['127.0.0.1'])
+      proxy_ips = Set.new(@env['TRUSTED_PROXIES'].split(',') + ['127.0.0.1'])
         .collect { |cidr| IPAddr.new(cidr.strip) }
 
       @cached_trusted_proxies = proxy_ips unless @options[:disable_cache]
       proxy_ips
-    end
-
-    def env_trusted_proxies
-      @env['TRUSTED_PROXIES']
     end
   end
 end

@@ -11,19 +11,11 @@ RSpec.describe "request IP address determination", type: :request do
     end
   end
 
-  # :reek:UtilityFunction
-  def token_auth_header
-    # Configure Slosilo to produce valid access tokens
-    slosilo = Slosilo["authn:rspec"] ||= Slosilo::Key.new
-    bearer_token = slosilo.signed_token('admin')
-    "Token token=\"#{Base64.strict_encode64 bearer_token.to_json}\""
-  end
-
   def request_env(remote_addr)
     {
       # We can't modify the access token middleware to add an exception to our
       # test route, so we need to create an access token for our request to use.
-      'HTTP_AUTHORIZATION' => token_auth_header,
+      'HTTP_AUTHORIZATION' => access_token_for('admin'),
       'REMOTE_ADDR' => remote_addr
     }
   end

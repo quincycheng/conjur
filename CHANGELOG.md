@@ -11,7 +11,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   Rails 5 upgrade. This is to indicate trusted proxy IP addresses when using the
   `X-Forwarded-For` HTTP header to identity the true client IP address of a request.
   [cyberark/conjur#1689](https://github.com/cyberark/conjur/issues/1689)
+- Log the OpenSSL FIPS mode after Rails is initialized for both OSS and DAP.
+  [cyberark/conjur#1684](https://github.com/cyberark/conjur/pull/1684)
 
+### Added
+- Add `/whoami` API endpoint for improved supportability and debugging for access
+  tokens and client IP address determination. [cyberark/conjur#1697](https://github.com/cyberark/conjur/issues/1697)
+
+## [1.8.0] - 2020-07-10
 ### Changed
 - Uses OpenSSL 1.0.2u to support FIPS compliance
   ([cyberark/conjur#1527](https://github.com/cyberark/conjur/issues/1527))
@@ -34,8 +41,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   API request (e.g. `[client@43868 ip="172.24.0.5"]`)
   ([cyberark/conjur#1550](https://github.com/cyberark/conjur/issues/1550))
 - Print Conjur server FIPS mode status. [cyberark/conjur#1654](https://github.com/cyberark/conjur/issues/1654)
-- Add `/whoami` API endpoint for improved supportability and debugging for access
-  tokens and client IP address determination. [cyberark/conjur#1697](https://github.com/cyberark/conjur/issues/1697)
 
 ## [1.7.4] - 2020-06-17
 

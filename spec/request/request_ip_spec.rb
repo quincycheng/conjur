@@ -3,14 +3,6 @@
 require 'spec_helper'
 
 RSpec.describe "request IP address determination", type: :request do
-  # We inject this RequestIpController to provide our tests with information
-  # about the IP address available to Rails controllers
-  class RequestIpController < ApplicationController
-    def echo
-      render json: { ip: request.ip }
-    end
-  end
-
   def request_env(remote_addr)
     {
       # We can't modify the access token middleware to add an exception to our
@@ -26,21 +18,9 @@ RSpec.describe "request IP address determination", type: :request do
     headers = {}
     headers['X-Forwarded-For'] = x_forwarded_for if x_forwarded_for
   
-    get '/request_ip', env: request_env(remote_addr), headers: headers
+    get '/whoami', env: request_env(remote_addr), headers: headers
   
-    JSON.parse(response.body)['ip']
-  end
-
-  before do
-    # Add the test endpoint to the routes
-    Rails.application.routes.draw do
-      get '/request_ip' => 'request_ip#echo'
-    end
-  end
-
-  after do
-    # Reset the Conjur routes to remove the test endpoint
-    Rails.application.reload_routes!
+    JSON.parse(response.body)['client_ip']
   end
 
   # --------------------------------------------------------------------

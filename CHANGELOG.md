@@ -36,7 +36,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   ([cyberark/conjur#1550](https://github.com/cyberark/conjur/issues/1550))
 - Print Conjur server FIPS mode status. [cyberark/conjur#1654](https://github.com/cyberark/conjur/issues/1654)
 
-
 ## [1.7.4] - 2020-06-17
 
 ### Fixed

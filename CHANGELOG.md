@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Log the OpenSSL FIPS mode after Rails is initialized for both OSS and DAP.
   [cyberark/conjur#1684](https://github.com/cyberark/conjur/pull/1684)
-
 - Add `/whoami` API endpoint for improved supportability and debugging for access
   tokens and client IP address determination. [cyberark/conjur#1697](https://github.com/cyberark/conjur/issues/1697)
 

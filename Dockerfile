@@ -1,5 +1,4 @@
-FROM cyberark/ubuntu-ruby-fips:20.04-latest
-
+FROM registry.tld/cyberark/ubuntu-ruby-fips:20.04-d243f6c
 ENV DEBIAN_FRONTEND=noninteractive \
     PORT=80 \
     LOG_DIR=/opt/conjur-server/log \

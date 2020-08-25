@@ -27,7 +27,6 @@ end
 # Sets all GCE annotations
 Given(/^I set all valid GCE annotations to host "([^"]*)"$/) do | hostname |
   i_have_a_resource "host", hostname
-
   set_annotation_to_resource("authn-gce/service-account-id", gce_service_account_id)
   set_annotation_to_resource("authn-gce/service-account-email", gce_service_account_email)
   set_annotation_to_resource("authn-gce/project-id", gce_project_id)
@@ -35,15 +34,14 @@ Given(/^I set all valid GCE annotations to host "([^"]*)"$/) do | hostname |
 end
 
 # Runs a curl command in a remote machine
-Given(/^I obtain a GCE identity token in (full|standard) format with audience claim value: "([^"]*)"$/) do | format, audience |
+Given(/^I obtain a (valid|standard_format|invalid_audience|non_existing_host|non_existing_account) GCE identity token$/) do | token_type |
   gce_identity_access_token(
-    audience: audience,
-    token_format: format
+    token_type.to_sym
   )
 end
 
 # Authenticates with Conjur GCE authenticator
-  Given(/I authenticate (?:(\d+) times? in (\d+) threads? )?with authn-gce using (valid|no|empty|self signed|no kid) token and (non-existing|existing) account/) do | num_requests, num_threads, token_state, account |
+  Given(/I authenticate (?:(\d+) times? in (\d+) threads? )?with authn-gce using (standard_format|non_existing_host|invalid_audience|valid|no|empty|self signed|no kid) token and (non-existing|existing) account/) do | num_requests, num_threads, token_state, account |
   account = account == 'non-existing' ? 'non-existing' : 'cucumber'
 
   token = case token_state

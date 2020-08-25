@@ -42,43 +42,23 @@ Feature: GCE Authenticator - Test Token Error Handling
     """
 
   Scenario: Authenticate using token with an invalid audience claim is denied
-    When I save my place in the log file
-    And I obtain a GCE identity token in full format with audience claim value: "invalid-audience"
-    And I authenticate with authn-gce using valid token and existing account
+    Given I obtain a invalid_audience GCE identity token
+    And I save my place in the log file
+    When I authenticate with authn-gce using invalid_audience token and existing account
     Then it is unauthorized
     And The following appears in the log after my savepoint:
     """
-    CONJ00067E 'audience' token claim invalid-audience is invalid. The format should be 'conjur/<account_name>/<host_id>'
+    CONJ00067E 'audience' token claim .* is invalid. The format should be 'conjur/<account_name>/<host_id>'
     """
 
-  Scenario: Authenticate using token with an invalid audience claim format missing 'conjur' part is denied
-    When I save my place in the log file
-    And I obtain a GCE identity token in full format with audience claim value: "cucumber/host/test-app"
-    And I authenticate with authn-gce using valid token and existing account
+  Scenario: Non-existing host is denied
+    Given I obtain a non_existing_host GCE identity token
+    And I save my place in the log file
+    When I authenticate with authn-gce using non_existing_host token and existing account
     Then it is unauthorized
     And The following appears in the log after my savepoint:
     """
-    CONJ00067E 'audience' token claim cucumber/host/test-app is invalid
-    """
-
-  Scenario: Authenticate using token with an invalid audience claim format missing 'account' part is denied
-    When I save my place in the log file
-    And I obtain a GCE identity token in full format with audience claim value: "conjur/host/test-app"
-    And I authenticate with authn-gce using valid token and existing account
-    Then it is unauthorized
-    And The following appears in the log after my savepoint:
-    """
-    CONJ00067E 'audience' token claim conjur/host/test-app is invalid
-    """
-
-  Scenario: Authenticate using token with an invalid audience claim format missing 'host' part is denied
-    When I save my place in the log file
-    And I obtain a GCE identity token in full format with audience claim value: "conjur/cucumber/test-app"
-    And I authenticate with authn-gce using valid token and existing account
-    Then it is unauthorized
-    And The following appears in the log after my savepoint:
-    """
-    CONJ00007E 'test-app' not found
+    CONJ00007E 'host/non-existing' not found
     """
 
   Scenario: Missing GCE access token is a bad request
@@ -106,10 +86,36 @@ Feature: GCE Authenticator - Test Token Error Handling
     And I grant group "conjur/authn-gce/apps" to host "project-id-only-test-app"
     And I set "authn-gce/project-id" annotation to host "project-id-only-test-app"
     And I save my place in the log file
-    And I obtain a GCE identity token in standard format with audience claim value: "conjur/cucumber/host/project-id-only-test-app"
-    And I authenticate with authn-gce using valid token and existing account
+    And I obtain a standard_format GCE identity token
+    And I authenticate with authn-gce using standard_format token and existing account
     Then it is unauthorized
     And The following appears in the log after my savepoint:
     """
      CONJ00068E Claim 'google/compute_engine/project_id' not found or empty in token
+    """
+
+  # "authn-gce/project-id" annotation is set because at least one of the annotations is expected.
+  Scenario: Host not in permitted group is denied
+    Given a policy:
+    """
+    - !policy
+      id: conjur/authn-gce
+      body:
+      - !webservice
+
+      - !group apps
+
+      - !permit
+        role: !group apps
+        privilege: [ read ]
+        resource: !webservice
+    """
+    And I set "authn-gce/project-id" annotation to host "test-app"
+    And I save my place in the log file
+    And I obtain a valid GCE identity token
+    When I authenticate with authn-gce using valid token and existing account
+    Then it is forbidden
+    And The following appears in the log after my savepoint:
+    """
+    CONJ00006E 'host/test-app' does not have 'authenticate' privilege on cucumber:webservice:conjur/authn-gce
     """

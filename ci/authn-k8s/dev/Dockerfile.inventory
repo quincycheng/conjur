@@ -6,7 +6,7 @@ RUN gem install -N conjur-api:"< 5.0" conjur-cli:"< 6.0" sinatra
 COPY inventory.rb usr/src/inventory.rb
 
 # allow anyone to write to this dir, container may not run as root
-RUN mkdir -p /etc/conjur/ssl && chmod 777 /etc/conjur/ssl
+# RUN mkdir -p /etc/conjur/ssl && chmod 777 /etc/conjur/ssl
 
 env PORT 80
 

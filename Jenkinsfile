@@ -1,7 +1,7 @@
 #!/usr/bin/env groovy
 
 pipeline {
-  agent { label 'executor-v2-rhel-ee-large' }
+  agent { label 'executor-v2' }
 
   options {
     timestamps()
@@ -172,6 +172,7 @@ pipeline {
          } // Run Tests on standard environment
         
         stage('Run Tests on FIPS Enterprise Environment') {
+          agent { label 'executor-v2-rhel-ee' }
           stages {
             stage('RSpec') {
               steps { sh 'ci/test rspec' }

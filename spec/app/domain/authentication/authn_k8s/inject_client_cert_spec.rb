@@ -64,12 +64,12 @@ RSpec.describe Authentication::AuthnK8s::InjectClientCert do
   let(:pod_request) { double("PodRequest", k8s_host: k8s_host,
                                            spiffe_id: spiffe_id) }
 
-  let(:kube_exec_instance) { double("MockKubeExec") }
-  let(:kube_exec) do
-    double('kube_exec').tap do |kube_exec|
-      allow(kube_exec).to receive(:new)
+  let(:execute_command_in_container_instance) { double("MockExecuteCommandInContainer") }
+  let(:execute_command_in_container) do
+    double('execute_command_in_container').tap do |execute_command_in_container|
+      allow(execute_command_in_container).to receive(:new)
         .with(no_args)
-        .and_return(kube_exec_instance)
+        .and_return(execute_command_in_container_instance)
     end
   end
 
@@ -97,7 +97,7 @@ RSpec.describe Authentication::AuthnK8s::InjectClientCert do
     {
       resource_class:                 resource_class,
       conjur_ca_repo:                 conjur_ca_repo,
-      kube_exec:                      kube_exec,
+      execute_command_in_container:                      execute_command_in_container,
       copy_text_to_file_in_container: copy_text_to_file_in_container,
       validate_pod_request:           validate_pod_request,
       audit_log:                      mocked_audit_logger
@@ -215,7 +215,7 @@ RSpec.describe Authentication::AuthnK8s::InjectClientCert do
     end
 
     context "when cert is being installed" do
-      let(:kube_exec_error) { "kube_exec error" }
+      let(:execute_command_in_container_error) { "execute_command_in_container error" }
 
       before :each do
         allow(validate_pod_request)
@@ -283,13 +283,13 @@ RSpec.describe Authentication::AuthnK8s::InjectClientCert do
                   mode: "644"
                 )
               )
-              .and_raise(kube_exec_error)
+              .and_raise(execute_command_in_container_error)
 
           expect { injector.(conjur_account: account,
                             service_id: service_id,
                             csr: csr,
                             host_id_prefix: host_id_prefix,
-                            client_ip: client_ip) }.to raise_error(kube_exec_error)
+                            client_ip: client_ip) }.to raise_error(execute_command_in_container_error)
         end
       end
 
@@ -311,7 +311,7 @@ RSpec.describe Authentication::AuthnK8s::InjectClientCert do
         end
 
         it "uses policy-defined container name if set" do
-          RSpec::Mocks.space.proxy_for(kube_exec_instance).reset
+          RSpec::Mocks.space.proxy_for(execute_command_in_container_instance).reset
 
           overridden_container_name = "ContainerName"
 

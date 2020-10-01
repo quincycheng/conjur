@@ -11,10 +11,13 @@ require 'websocket-client-simple'
 module Authentication
   module AuthnK8s
 
-    KubeExec ||= CommandClass.new(
+    ExecuteCommandInContainer ||= CommandClass.new(
       dependencies: {
-        env:    ENV,
-        logger: Rails.logger
+        env:               ENV,
+        websocket_client:  WebSocket::Client::Simple,
+        message_log_class: MessageLog,
+        websocket_message: WebSocketMessage,
+        logger:            Rails.logger
       },
       inputs:       %i(k8s_object_lookup pod_namespace pod_name container cmds body stdin)
     ) do
@@ -25,28 +28,12 @@ module Authentication
       DEFAULT_KUBE_EXEC_COMMAND_TIMEOUT = 5
 
       def call
-        @message_log    = MessageLog.new
-        @channel_closed = false
-
-        url       = server_url(@cmds, @stdin)
-        headers   = kube_client.headers.clone
-        ws_client = WebSocket::Client::Simple.connect(url, headers: headers)
-
-        add_websocket_event_handlers(ws_client, @body, @stdin)
-
+        init_ws_client
+        add_websocket_event_handlers(ws_client)
         wait_for_close_message
-
-        unless @channel_closed
-          raise Errors::Authentication::AuthnK8s::ExecCommandTimedOut.new(
-            timeout,
-            @container,
-            @pod_name
-          )
-        end
-
-        verify_error_stream
-
-        @message_log.messages
+        verify_channel_is_closed
+        verify_error_stream_is_empty
+        websocket_messages
       end
 
       def on_open(ws_client, body, stdin)
@@ -64,7 +51,7 @@ module Authentication
           )
 
           if stdin
-            data = WebSocketMessage.channel_byte('stdin') + body
+            data = @websocket_message.channel_byte('stdin') + body
             ws_client.send(data)
 
             # We close the socket and don't wait for the cert to be fully injected
@@ -77,7 +64,7 @@ module Authentication
       end
 
       def on_message(msg, ws_client)
-        wsmsg = WebSocketMessage.new(msg)
+        wsmsg = @websocket_message.new(msg)
 
         msg_type = wsmsg.type
         msg_data = wsmsg.data
@@ -122,11 +109,41 @@ module Authentication
 
       private
 
-      def add_websocket_event_handlers(ws_client, body, stdin)
+      def init_ws_client
+        @message_log    = @message_log_class.new
+        @channel_closed = false
+        ws_client
+      end
+
+      def ws_client
+        @ws_client ||= @websocket_client.connect(server_url, headers: headers)
+      end
+
+      def server_url
+        api_uri  = kube_client.api_endpoint
+        base_url = "wss://#{api_uri.host}:#{api_uri.port}"
+        path     = "/api/v1/namespaces/#{@pod_namespace}/pods/#{@pod_name}/exec"
+
+        base_query_string_parts = %W(container=#{CGI.escape(@container)} stderr=true stdout=true)
+        stdin_part              = @stdin ? ['stdin=true'] : []
+        cmds_part               = @cmds.map { |cmd| "command=#{CGI.escape(cmd)}" }
+        query_string            = (base_query_string_parts + stdin_part + cmds_part).join("&")
+
+        "#{base_url}#{path}?#{query_string}"
+      end
+
+      def headers
+        @headers ||= kube_client.headers.clone
+      end
+
+      def add_websocket_event_handlers(ws_client)
         # We need to set this so the handlers will call this class's methods.
         # If we use 'self' inside the curly brackets it will be try to use methods
-        # of the class WebSocket::Client::Simple::Client
-        kube = self
+        # of the class WebSocket::Client::Simple::Client.
+        # We need to have method params for the same reason.
+        kube  = self
+        body  = @body
+        stdin = @stdin
 
         ws_client.on(:open) { kube.on_open(ws_client, body, stdin) }
         ws_client.on(:message) { |msg| kube.on_message(msg, ws_client) }
@@ -141,22 +158,29 @@ module Authentication
         end
       end
 
-      def query_string(cmds, stdin)
-        stdin_part = stdin ? ['stdin=true'] : []
-        cmds_part  = cmds.map { |cmd| "command=#{CGI.escape(cmd)}" }
-        (base_query_string_parts + stdin_part + cmds_part).join("&")
+      def verify_channel_is_closed
+        unless @channel_closed
+          raise Errors::Authentication::AuthnK8s::ExecCommandTimedOut.new(
+            timeout,
+            @container,
+            @pod_name
+          )
+        end
       end
 
-      def base_query_string_parts
-        %W(container=#{CGI.escape(@container)} stderr=true stdout=true)
+      def verify_error_stream_is_empty
+        error_stream = @message_log.messages[:error]
+        return if error_stream.nil? || error_stream.empty?
+        raise Errors::Authentication::AuthnK8s::ExecCommandError, websocket_error(error_stream)
       end
 
-      def server_url(cmds, stdin)
-        api_uri  = kube_client.api_endpoint
-        base_url = "wss://#{api_uri.host}:#{api_uri.port}"
-        path     = "/api/v1/namespaces/#{@pod_namespace}/pods/#{@pod_name}/exec"
-        query    = query_string(cmds, stdin)
-        "#{base_url}#{path}?#{query}"
+      def websocket_error(msg)
+        return 'The server returned a blank error message' if msg.blank?
+        msg.to_s
+      end
+
+      def websocket_messages
+        @message_log.messages
       end
 
       def timeout
@@ -167,17 +191,6 @@ module Authentication
         default      = DEFAULT_KUBE_EXEC_COMMAND_TIMEOUT
         # If the value of KUBE_EXEC_COMMAND_TIMEOUT is not an integer it will be zero
         @timeout = not_provided ? default : kube_timeout.to_i
-      end
-
-      def verify_error_stream
-        error_stream = @message_log.messages[:error]
-        return if error_stream.nil? || error_stream.empty?
-        raise Errors::Authentication::AuthnK8s::ExecCommandError, websocket_error(error_stream)
-      end
-
-      def websocket_error(msg)
-        return 'The server returned a blank error message' if msg.blank?
-        msg.to_s
       end
     end
   end

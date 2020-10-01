@@ -12,13 +12,12 @@ module Authentication
         logger:                         Rails.logger,
         resource_class:                 Resource,
         conjur_ca_repo:                 Repos::ConjurCA,
-        kube_exec:                      KubeExec,
         copy_text_to_file_in_container: CopyTextToFileInContainer.new,
         validate_pod_request:           ValidatePodRequest.new,
         extract_container_name:         ExtractContainerName.new,
         audit_log:                      ::Audit.logger
       },
-      inputs: %i(conjur_account service_id csr host_id_prefix client_ip)
+      inputs:       %i(conjur_account service_id csr host_id_prefix client_ip)
     ) do
 
       # :reek:TooManyStatements
@@ -70,8 +69,8 @@ module Authentication
       end
 
       def install_signed_cert
-        pod_namespace = spiffe_id.namespace
-        pod_name = spiffe_id.name
+        pod_namespace  = spiffe_id.namespace
+        pod_name       = spiffe_id.name
         cert_file_path = "/etc/conjur/ssl/client.pem"
         @logger.debug(LogMessages::Authentication::AuthnK8s::CopySSLToPod.new(
           container_name,
@@ -81,13 +80,13 @@ module Authentication
         ))
 
         @copy_text_to_file_in_container.call(
-          webservice: webservice,
+          webservice:    webservice,
           pod_namespace: pod_namespace,
-          pod_name: pod_name,
-          container: container_name,
-          path: cert_file_path,
-          content: cert_to_install.to_pem,
-          mode: "644"
+          pod_name:      pod_name,
+          container:     container_name,
+          path:          cert_file_path,
+          content:       cert_to_install.to_pem,
+          mode:          "644"
         )
 
         @logger.debug(LogMessages::Authentication::AuthnK8s::InitializeCopySSLToPodSuccess.new)
@@ -96,16 +95,16 @@ module Authentication
       def pod_request
         PodRequest.new(
           service_id: @service_id,
-          k8s_host: k8s_host,
-          spiffe_id: spiffe_id
+          k8s_host:   k8s_host,
+          spiffe_id:  spiffe_id
         )
       end
 
       def k8s_host
         @k8s_host ||= Authentication::AuthnK8s::K8sHost.from_csr(
-          account: @conjur_account,
+          account:      @conjur_account,
           service_name: @service_id,
-          csr: smart_csr
+          csr:          smart_csr
         )
       end
 
@@ -139,9 +138,9 @@ module Authentication
 
       def webservice
         ::Authentication::Webservice.new(
-          account: @conjur_account,
+          account:            @conjur_account,
           authenticator_name: KUBERNETES_AUTHENTICATOR_NAME,
-          service_id: @service_id
+          service_id:         @service_id
         )
       end
 
@@ -154,7 +153,7 @@ module Authentication
 
       def container_name
         @extract_container_name.call(
-          service_id: @service_id,
+          service_id:       @service_id,
           host_annotations: host.annotations
         )
       end
@@ -163,11 +162,11 @@ module Authentication
         @audit_log.log(
           Audit::Event::Authn::InjectClientCert.new(
             authenticator_name: KUBERNETES_AUTHENTICATOR_NAME,
-            service: webservice,
-            role_id: host.id,
-            client_ip: @client_ip,
-            success: true,
-            error_message: nil
+            service:            webservice,
+            role_id:            host.id,
+            client_ip:          @client_ip,
+            success:            true,
+            error_message:      nil
           )
         )
       end
@@ -176,11 +175,11 @@ module Authentication
         @audit_log.log(
           Audit::Event::Authn::InjectClientCert.new(
             authenticator_name: KUBERNETES_AUTHENTICATOR_NAME,
-            service: webservice,
-            role_id: host.id,
-            client_ip: @client_ip,
-            success: false,
-            error_message: err.message
+            service:            webservice,
+            role_id:            host.id,
+            client_ip:          @client_ip,
+            success:            false,
+            error_message:      err.message
           )
         )
       end

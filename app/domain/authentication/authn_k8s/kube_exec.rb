@@ -37,14 +37,14 @@ module Authentication
         wait_for_close_message
 
         unless @channel_closed
-          raise Errors::Authentication::AuthnK8s::CommandTimedOut.new(
+          raise Errors::Authentication::AuthnK8s::ExecCommandTimedOut.new(
             timeout,
             @container,
             @pod_name
           )
         end
 
-        # TODO: raise an `WebsocketServerFailure` here in the case of ws :error
+        verify_error_stream
 
         @message_log.messages
       end
@@ -54,7 +54,10 @@ module Authentication
         hs_error = hs.error
 
         if hs_error
-          ws_client.emit(:error, "Websocket handshake error: #{hs_error.inspect}")
+          ws_client.emit(
+            :error,
+            Errors::Authentication::AuthnK8s::WebSocketHandshakeError.new(hs_error.inspect)
+          )
         else
           @logger.debug(
             LogMessages::Authentication::AuthnK8s::PodChannelOpen.new(@pod_name)
@@ -165,24 +168,16 @@ module Authentication
         # If the value of KUBE_EXEC_COMMAND_TIMEOUT is not an integer it will be zero
         @timeout = not_provided ? default : kube_timeout.to_i
       end
-    end
 
-    class KubeExec
-      # This delegates to all the work to the call method created automatically
-      # by CommandClass
-      #
-      # This is needed because we need these methods to exist on the class,
-      # but that class contains only a metaprogramming generated `call()`.
-      def execute(k8s_object_lookup:, pod_namespace:, pod_name:, cmds:, container: 'authenticator', body: "", stdin: false)
-        call(
-          k8s_object_lookup: k8s_object_lookup,
-          pod_namespace:     pod_namespace,
-          pod_name:          pod_name,
-          container:         container,
-          cmds:              cmds,
-          body:              body,
-          stdin:             stdin
-        )
+      def verify_error_stream
+        error_stream = @message_log.messages[:error]
+        return if error_stream.nil? || error_stream.empty?
+        raise Errors::Authentication::AuthnK8s::ExecCommandError, websocket_error(error_stream)
+      end
+
+      def websocket_error(msg)
+        return 'The server returned a blank error message' if msg.blank?
+        msg.to_s
       end
     end
   end

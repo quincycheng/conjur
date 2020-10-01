@@ -80,7 +80,7 @@ module Authentication
           pod_name
         ))
 
-        resp = @copy_text_to_file_in_container.call(
+        @copy_text_to_file_in_container.call(
           webservice: webservice,
           pod_namespace: pod_namespace,
           pod_name: pod_name,
@@ -90,15 +90,7 @@ module Authentication
           mode: "644"
         )
 
-        validate_cert_installation(resp)
         @logger.debug(LogMessages::Authentication::AuthnK8s::InitializeCopySSLToPodSuccess.new)
-      end
-
-      def validate_cert_installation(resp)
-        error_stream = resp[:error]
-        return if error_stream.nil? || error_stream.empty?
-        raise Errors::Authentication::AuthnK8s::CertInstallationError,
-              cert_error(error_stream)
       end
 
       def pod_request
@@ -139,12 +131,6 @@ module Authentication
 
       def common_name
         @common_name ||= CommonName.new(smart_csr.common_name)
-      end
-
-      # In case there's a blank error message...
-      def cert_error(msg)
-        return 'The server returned a blank error message' if msg.blank?
-        msg.to_s
       end
 
       def ca_for_webservice

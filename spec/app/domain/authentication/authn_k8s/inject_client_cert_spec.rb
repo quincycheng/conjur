@@ -215,16 +215,12 @@ RSpec.describe Authentication::AuthnK8s::InjectClientCert do
     end
 
     context "when cert is being installed" do
-      let(:kube_exec_response) { double("MockKubeExecResponse") }
+      let(:kube_exec_error) { "kube_exec error" }
 
       before :each do
         allow(validate_pod_request)
           .to receive(:call)
           .with(hash_including(pod_request: anything))
-          .and_return(nil)
-
-        allow(kube_exec_response).to receive(:[])
-          .with(:error)
           .and_return(nil)
 
         allow(copy_text_to_file_in_container)
@@ -240,7 +236,7 @@ RSpec.describe Authentication::AuthnK8s::InjectClientCert do
               mode: "644"
             )
           )
-          .and_return(kube_exec_response)
+          .and_return(true)
       end
 
       context "when copy operation raises runtime error" do
@@ -270,42 +266,30 @@ RSpec.describe Authentication::AuthnK8s::InjectClientCert do
         end
       end
 
-      context "when copy response error stream is not empty" do
+      context "when copy_text_to_file_in_container raises an error" do
         let(:audit_success) { false}
 
-        it "throws CertInstallationError" do
-          error_type = Errors::Authentication::AuthnK8s::CertInstallationError
-          expected_error_text = "ExpectedCopyError"
-          expected_full_error_text = /CONJ00027E.*ExpectedCopyError/
-
-          allow(kube_exec_response).to receive(:[])
-            .with(:error)
-            .and_return(expected_error_text)
-
-          expect { injector.(conjur_account: account,
-                            service_id: service_id,
-                            csr: csr,
-                            host_id_prefix: host_id_prefix,
-                            client_ip: client_ip) }.to raise_error(error_type, expected_full_error_text)
-        end
-      end
-
-      context "when copy response error stream is just whitespace" do
-        let(:audit_success) { false }
-
-        it "throws CertInstallationError" do
-          error_type = Errors::Authentication::AuthnK8s::CertInstallationError
-          expected_full_error_text = /CONJ00027E.*The server returned a blank error message/
-
-          allow(kube_exec_response).to receive(:[])
-            .with(:error)
-            .and_return("\n   \n")
+        it "raises the same error" do
+          allow(copy_text_to_file_in_container)
+            .to receive(:call)
+              .with(
+                hash_including(
+                  webservice: webservice,
+                  pod_namespace: spiffe_namespace,
+                  pod_name: spiffe_name,
+                  container: "authenticator",
+                  path: "/etc/conjur/ssl/client.pem",
+                  content: webservice_signed_cert_pem,
+                  mode: "644"
+                )
+              )
+              .and_raise(kube_exec_error)
 
           expect { injector.(conjur_account: account,
                             service_id: service_id,
                             csr: csr,
                             host_id_prefix: host_id_prefix,
-                            client_ip: client_ip) }.to raise_error(error_type, expected_full_error_text)
+                            client_ip: client_ip) }.to raise_error(kube_exec_error)
         end
       end
 
@@ -318,11 +302,7 @@ RSpec.describe Authentication::AuthnK8s::InjectClientCert do
                              client_ip: client_ip) }.to_not raise_error
         end
 
-        it "throws no errors if copy is successful and error stream is empty string" do
-          allow(kube_exec_response).to receive(:[])
-            .with(:error)
-            .and_return("")
-
+        it "throws no errors if copy is successful" do
           expect { injector.(conjur_account: account,
                              service_id: service_id,
                              csr: csr,
@@ -351,7 +331,6 @@ RSpec.describe Authentication::AuthnK8s::InjectClientCert do
                 mode: "644"
               )
             )
-            .and_return(kube_exec_response)
 
           expect { injector.(conjur_account: account,
                              service_id: service_id,

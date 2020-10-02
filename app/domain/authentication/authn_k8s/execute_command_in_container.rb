@@ -15,8 +15,8 @@ module Authentication
       dependencies: {
         env:               ENV,
         websocket_client:  WebSocket::Client::Simple,
-        message_log_class: MessageLog,
-        websocket_message: WebSocketMessage,
+        message_log:       MessageLog.new,
+        validate_message:  MessageLog::ValidateMessage.new,
         logger:            Rails.logger
       },
       inputs:       %i(k8s_object_lookup pod_namespace pod_name container cmds body stdin)
@@ -29,61 +29,67 @@ module Authentication
 
       def call
         init_ws_client
-        add_websocket_event_handlers(ws_client)
+        add_websocket_event_handlers
         wait_for_close_message
         verify_channel_is_closed
         verify_error_stream_is_empty
         websocket_messages
       end
 
-      def on_open(ws_client, body, stdin)
+      private
+
+      def on_open
         hs       = ws_client.handshake
         hs_error = hs.error
 
         if hs_error
+          # TODO: Is this correct?  This didn't make sense to me.
           ws_client.emit(
             :error,
-            Errors::Authentication::AuthnK8s::WebSocketHandshakeError.new(hs_error.inspect)
-          )
-        else
-          @logger.debug(
-            LogMessages::Authentication::AuthnK8s::PodChannelOpen.new(@pod_name)
-          )
-
-          if stdin
-            data = @websocket_message.channel_byte('stdin') + body
-            ws_client.send(data)
-
-            # We close the socket and don't wait for the cert to be fully injected
-            # so that we can finish handling the request quickly and don't leave the
-            # Conjur server hanging. If an error occurred it will be written to
-            # the client container logs.
-            ws_client.send(nil, type: :close)
-          end
-        end
-      end
-
-      def on_message(msg, ws_client)
-        wsmsg = @websocket_message.new(msg)
-
-        msg_type = wsmsg.type
-        msg_data = wsmsg.data
-
-        if msg_type == :binary
-          @logger.debug(
-            LogMessages::Authentication::AuthnK8s::PodChannelData.new(
-              @pod_name,
-              wsmsg.channel_name,
-              msg_data
+            Errors::Authentication::AuthnK8s::WebSocketHandshakeError.new(
+              hs_error.inspect
             )
           )
-          @message_log.save_message(wsmsg)
-        elsif msg_type == :close
+          return
+        end
+
+        @logger.debug(
+          LogMessages::Authentication::AuthnK8s::PodChannelOpen.new(@pod_name)
+        )
+
+        return unless @stdin
+
+        # stdin was provided. We send it to the client.
+
+        data = WebSocketMessage.channel_byte('stdin') + @body
+        ws_client.send(data)
+
+        # We close the socket and don't wait for the cert to be fully injected
+        # so that we can finish handling the request quickly and don't leave the
+        # Conjur server hanging. If an error occurred it will be written to
+        # the client container logs.
+        ws_client.send(nil, type: :close)
+      end
+
+      def on_message(msg)
+        ws_msg = WebSocketMessage.new(msg)
+
+        msg_type = ws_msg.type
+        msg_data = ws_msg.data
+
+        case msg_type
+        when :binary
+          @logger.debug(
+            LogMessages::Authentication::AuthnK8s::PodChannelData.new(
+              @pod_name, ws_msg.channel_name, msg_data
+            )
+          )
+          @validate_message.call(ws_msg)
+          @message_log.save_message(ws_msg)
+        when :close
           @logger.debug(
             LogMessages::Authentication::AuthnK8s::PodMessageData.new(
-              @pod_name,
-              "close",
-              msg_data
+              @pod_name, "close", msg_data
             )
           )
           ws_client.close
@@ -107,10 +113,7 @@ module Authentication
         @message_log.save_error_string(error_info)
       end
 
-      private
-
       def init_ws_client
-        @message_log    = @message_log_class.new
         @channel_closed = false
         ws_client
       end
@@ -119,15 +122,22 @@ module Authentication
         @ws_client ||= @websocket_client.connect(server_url, headers: headers)
       end
 
+      # TODO: Nice candidate for small value object.  The
+      #   pod_namespace/pod_name/container probably represents something.  It's
+      #   been too long since I've worked with k8s, so I can't tell you what :)
+      # TODO: Also the standard library uri class contains well-tested code
+      #   for this logic.  See: URI.encode_www_form for the query string part.
       def server_url
         api_uri  = kube_client.api_endpoint
         base_url = "wss://#{api_uri.host}:#{api_uri.port}"
         path     = "/api/v1/namespaces/#{@pod_namespace}/pods/#{@pod_name}/exec"
 
         base_query_string_parts = %W(container=#{CGI.escape(@container)} stderr=true stdout=true)
-        stdin_part              = @stdin ? ['stdin=true'] : []
-        cmds_part               = @cmds.map { |cmd| "command=#{CGI.escape(cmd)}" }
-        query_string            = (base_query_string_parts + stdin_part + cmds_part).join("&")
+        stdin_part = @stdin ? ['stdin=true'] : []
+        cmds_part = @cmds.map { |cmd| "command=#{CGI.escape(cmd)}" }
+        query_string = (
+          base_query_string_parts + stdin_part + cmds_part
+        ).join("&")
 
         "#{base_url}#{path}?#{query_string}"
       end
@@ -136,19 +146,19 @@ module Authentication
         @headers ||= kube_client.headers.clone
       end
 
-      def add_websocket_event_handlers(ws_client)
+      def add_websocket_event_handlers
+        # TODO: Note you can avoid this if you just refer to the methods directly
+        #   rather than appending self, per the change below.
+        #   See: https://bit.ly/36rU2lf
         # We need to set this so the handlers will call this class's methods.
         # If we use 'self' inside the curly brackets it will be try to use methods
         # of the class WebSocket::Client::Simple::Client.
         # We need to have method params for the same reason.
-        kube  = self
-        body  = @body
-        stdin = @stdin
 
-        ws_client.on(:open) { kube.on_open(ws_client, body, stdin) }
-        ws_client.on(:message) { |msg| kube.on_message(msg, ws_client) }
-        ws_client.on(:close) { kube.on_close }
-        ws_client.on(:error) { |err| kube.on_error(err) }
+        ws_client.on(:open) { on_open }
+        ws_client.on(:message) { |msg| on_message(msg) }
+        ws_client.on(:close) { on_close }
+        ws_client.on(:error) { |err| on_error(err) }
       end
 
       def wait_for_close_message

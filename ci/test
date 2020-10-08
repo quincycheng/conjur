@@ -361,7 +361,15 @@ _prepare_env_auth_oidc() {
   docker-compose exec -T oidc-keycloak bash -c '/scripts/create_user "$KEYCLOAK_SECOND_APP_USER" "$KEYCLOAK_SECOND_APP_USER_PASSWORD" "$KEYCLOAK_SECOND_APP_USER_EMAIL"'
 
   echo "Creating user in Keycloak that will not exist in conjur"
-  docker-compose exec -T oidc-keycloak bash -c '/scripts/create_user "$KEYCLOAK_NON_CONJUR_APP_USER" "$KEYCLOAK_NON_CONJUR_APP_USER_PASSWORD" "$KEYCLOAK_NON_CONJUR_APP_USER_EMAIL"'
+
+  # Note: We want to pass the command thru without expansion here.
+  # shellcheck disable=SC2016
+  docker-compose exec \
+    -T oidc-keycloak \
+    bash -c '/scripts/create_user 
+      "$KEYCLOAK_NON_CONJUR_APP_USER"
+      "$KEYCLOAK_NON_CONJUR_APP_USER_PASSWORD"
+      "$KEYCLOAK_NON_CONJUR_APP_USER_EMAIL"'
 
   echo "Initialize keycloak certificate in conjur server"
   docker-compose exec -T conjur /authn-oidc/keycloak/scripts/fetchCertificate

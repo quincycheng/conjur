@@ -371,16 +371,16 @@ _prepare_env_auth_oidc() {
 # args: <profile name> <extra services>
 # example: run_cucumber_tests 'policy'
 _setup_for_cucumber() {
-  if [[ ! -z "$1" ]]; then
+  if [[ -n "$1" ]]; then
     local services="$1"; shift
   fi
   
   # Create reports folders
-  mkdir -p cucumber/$profile/features/reports
-  rm -rf cucumber/$profile/features/reports/*
+  mkdir -p "cucumber/$profile/features/reports"
+  rm -rf "cucumber/$profile/features/reports/*"
 
   # Make sure all the services are up
-  docker-compose up --no-deps --no-recreate -d pg conjur $services
+  docker-compose up --no-deps --no-recreate -d pg conjur "$services"
 
   docker-compose exec -T conjur conjurctl wait
   docker-compose exec -T conjur conjurctl account create cucumber
@@ -407,10 +407,10 @@ _run_cucumber() {
 
 _run_cucumber_tests() {
   local profile="$1"
-  if [[ ! -z "$2" ]]; then
+  if [[ -n "$2" ]]; then
     local services="$2"
   fi
-  if [[ ! -z "$3" ]]; then
+  if [[ -n "$3" ]]; then
     local cucumber_env_args="$3"
   fi
 

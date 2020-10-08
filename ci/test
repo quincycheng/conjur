@@ -372,7 +372,8 @@ _prepare_env_auth_oidc() {
 # example: run_cucumber_tests 'policy'
 _setup_for_cucumber() {
   if [[ -n "$1" ]]; then
-    local services="$1"; shift
+    read -ra services <<< "$1"
+    shift
   fi
   
   # Create reports folders
@@ -380,7 +381,7 @@ _setup_for_cucumber() {
   rm -rf "cucumber/$profile/features/reports/*"
 
   # Make sure all the services are up
-  docker-compose up --no-deps --no-recreate -d pg conjur $services
+  docker-compose up --no-deps --no-recreate -d pg conjur "${services[@]}"
 
   docker-compose exec -T conjur conjurctl wait
   docker-compose exec -T conjur conjurctl account create cucumber

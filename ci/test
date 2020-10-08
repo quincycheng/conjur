@@ -380,7 +380,7 @@ _setup_for_cucumber() {
   rm -rf "cucumber/$profile/features/reports/*"
 
   # Make sure all the services are up
-  docker-compose up --no-deps --no-recreate -d pg conjur "$services"
+  docker-compose up --no-deps --no-recreate -d pg conjur $services
 
   docker-compose exec -T conjur conjurctl wait
   docker-compose exec -T conjur conjurctl account create cucumber

@@ -393,9 +393,9 @@ _prepare_env_auth_oidc() {
 # available to bash commands run via "docker-compose exec oidc-keycloak bash
 # -c...", since they're defined in the docker-compose.yml.
 _create_keycloak_user() {
-  local user_var=$1; shift
-  local pw_var=$2; shift
-  local email_var=$3; shift
+  local user_var=$1
+  local pw_var=$2
+  local email_var=$3
 
   docker-compose exec -T \
     oidc-keycloak \

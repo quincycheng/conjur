@@ -246,17 +246,16 @@ _get_oidc_env_args() {
 }
 
 _get_azure_env_args() {
-  local azure_env_args="-e AZURE_TENANT_ID=$AZURE_TENANT_ID \
-                        -e AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID \
-                        -e AZURE_RESOURCE_GROUP=$AZURE_RESOURCE_GROUP \
-                        -e AZURE_AUTHN_INSTANCE_IP=$AZURE_AUTHN_INSTANCE_IP \
-                        -e AZURE_AUTHN_INSTANCE_USERNAME=$AZURE_AUTHN_INSTANCE_USERNAME \
-                        -e AZURE_AUTHN_INSTANCE_PASSWORD=$AZURE_AUTHN_INSTANCE_PASSWORD \
-                        -e USER_ASSIGNED_IDENTITY=$USER_ASSIGNED_IDENTITY \
-                        -e USER_ASSIGNED_IDENTITY_CLIENT_ID=$USER_ASSIGNED_IDENTITY_CLIENT_ID \
-                        -e SYSTEM_ASSIGNED_IDENTITY=$SYSTEM_ASSIGNED_IDENTITY"
-
-  echo "${azure_env_args}"
+  echo "\
+    -e AZURE_TENANT_ID=$AZURE_TENANT_ID \
+    -e AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID \
+    -e AZURE_RESOURCE_GROUP=$AZURE_RESOURCE_GROUP \
+    -e AZURE_AUTHN_INSTANCE_IP=$AZURE_AUTHN_INSTANCE_IP \
+    -e AZURE_AUTHN_INSTANCE_USERNAME=$AZURE_AUTHN_INSTANCE_USERNAME \
+    -e AZURE_AUTHN_INSTANCE_PASSWORD=$AZURE_AUTHN_INSTANCE_PASSWORD \
+    -e USER_ASSIGNED_IDENTITY=$USER_ASSIGNED_IDENTITY \
+    -e USER_ASSIGNED_IDENTITY_CLIENT_ID=$USER_ASSIGNED_IDENTITY_CLIENT_ID \
+    -e SYSTEM_ASSIGNED_IDENTITY=$SYSTEM_ASSIGNED_IDENTITY"
 }
 
 _get_gcp_env_args() {
@@ -402,13 +401,12 @@ _create_keycloak_user() {
     bash -c "/scripts/create_user \"$user_var\" \"$pw_var\" \"$email_var\""
 }
 
-# Setup and run Cucumber tests, first starting any other services required
+# Setup Cucumber tests, first starting any other services required.
 # args: <profile name> <extra services>
-# example: run_cucumber_tests 'policy'
+# example: run_cucumber_tests policy
 _setup_for_cucumber() {
   if [[ -n "$1" ]]; then
     read -ra services <<< "$1"
-    shift
   fi
   
   # Create reports folders
@@ -430,10 +428,13 @@ _get_api_key() {
 # run cucumber, using $1 to initialize the environment. $1 can be
 # empty, but it must be present.
 _run_cucumber() {
-  local cucumber_env_args="$1"; shift
+  local cucumber_env_args="$1"
   # If there's no tty (e.g. we're running as a Jenkins job, pass -T to
   # docker-compose)
-  local notty=$(tty -s || echo '-T' && true)
+  local notty
+  notty=$(tty -s || echo '-T')
+
+  arr=( $cucumber_env_args )
 
   docker-compose run --no-deps $notty --rm $cucumber_env_args \
      -e CONJUR_AUTHN_API_KEY=$api_key \
@@ -442,18 +443,23 @@ _run_cucumber() {
 }
 
 _run_cucumber_tests() {
-  local profile="$1"
+  local profile services cucumber_env_args
+
+  profile="$1"
+
   if [[ -n "$2" ]]; then
-    local services="$2"
+    read -ra services <<< "$2"
   fi
+
   if [[ -n "$3" ]]; then
     local cucumber_env_args="$3"
   fi
 
-  _setup_for_cucumber "$services"
+  _setup_for_cucumber "${services[@]}"
   
   # Grab the admin user API key
-  local api_key=$(_get_api_key)
+  local api_key
+  api_key=$(_get_api_key)
 
   # Run the tests
   _run_cucumber "$cucumber_env_args" \
@@ -472,25 +478,28 @@ _run_cucumber_tests() {
 }
 
 _run_cucumber_shell() {
-  if [[ ! -z "$1" ]]; then
-    local services="$1"; shift
+  if [[ -n "$1" ]]; then
+    read -ra services <<< "$1"
+    shift
   fi
   
-  _setup_for_cucumber "$services"
-  local api_key=$(_get_api_key)
+  _setup_for_cucumber "${services[@]}"
+  local api_key
+  api_key=$(_get_api_key)
 
   _run_cucumber '' /bin/bash
 }
 
 
 _start_conjur() {
-  if [[ ! -z "$1" ]]; then
-    local services="$1"; shift
+  if [[ -n "$1" ]]; then
+    read -ra services <<< "$1"
+    shift
   fi
   
   # Start Conjur and supporting services
   typeset -p COMPOSE_PROJECT_NAME
-  docker-compose up --no-deps --no-recreate -d pg conjur $services
+  docker-compose up --no-deps --no-recreate -d pg conjur "${services[@]}"
 }
 
 _subcommands() {
@@ -502,9 +511,13 @@ _subcommands_doc() {
 }
 
 _wait_for_pg() {
-  local svc="$1"; shift
+  local svc="$1"
 
-  until docker-compose exec -T $svc psql -U postgres -c "select 1" -d postgres; do sleep 1; done
+  until docker-compose exec -T \
+    "$svc" psql -U postgres -c "select 1" -d postgres
+  do
+    sleep 1
+  done
 }
 
-_main "$(dirname $0)" "$@"
+_main "$(dirname "$0")" "$@"

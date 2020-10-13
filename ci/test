@@ -406,6 +406,7 @@ _create_keycloak_user() {
 # example: run_cucumber_tests policy
 _setup_for_cucumber() {
   if [[ -n "$1" ]]; then
+    # TODO: Make this use "$@"
     read -ra services <<< "$1"
   fi
   
@@ -432,9 +433,10 @@ _run_cucumber() {
   # If there's no tty (e.g. we're running as a Jenkins job, pass -T to
   # docker-compose)
   local notty
+  # TODO: I think i can remove && true
   notty=$(tty -s || echo '-T' && true)
 
-  arr=( $cucumber_env_args )
+  # arr=( $cucumber_env_args )
 
   docker-compose run --no-deps $notty --rm $cucumber_env_args \
      -e CONJUR_AUTHN_API_KEY=$api_key \
@@ -455,7 +457,7 @@ _run_cucumber_tests() {
     local cucumber_env_args="$3"
   fi
 
-  _setup_for_cucumber "${services[@]}"
+  _setup_for_cucumber "${services[*]}"
   
   # Grab the admin user API key
   local api_key

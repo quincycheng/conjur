@@ -440,9 +440,9 @@ _run_cucumber() {
     run_cmd+=(-T)
   fi
 
-  docker-compose "#{run_cmd[@]}" --no-deps --rm $cucumber_env_args \
-     -e CONJUR_AUTHN_API_KEY=$api_key \
-     -e CUCUMBER_NETWORK=$(_find_cucumber_network) \
+  docker-compose "${run_cmd[@]}" --no-deps --rm $cucumber_env_args \
+     -e "CONJUR_AUTHN_API_KEY=$api_key" \
+     -e "CUCUMBER_NETWORK=$(_find_cucumber_network)" \
      cucumber -ec "$@"
 }
 

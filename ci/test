@@ -432,11 +432,17 @@ _run_cucumber() {
   local cucumber_env_args="$1"; shift
   # If there's no tty (e.g. we're running as a Jenkins job, pass -T to
   # docker-compose)
-  local notty=$(tty -s || echo '-T' && true)
+  # local notty
+  # This flag will be -T or the empty string
+  # tty_flag=$(tty -s || echo '-T')
+  run_cmd=(run)
+  if ! tty -s; then
+    run_cmd+=(-T)
+  fi
 
-  docker-compose run --no-deps $notty --rm $cucumber_env_args \
-     -e CONJUR_AUTHN_API_KEY=$api_key \
-     -e CUCUMBER_NETWORK=$(_find_cucumber_network) \
+  docker-compose "#{run_cmd[@]}" --no-deps --rm $cucumber_env_args \
+     -e "CONJUR_AUTHN_API_KEY=$api_key" \
+     -e "CUCUMBER_NETWORK=$(_find_cucumber_network)" \
      cucumber -ec "$@"
 }
 

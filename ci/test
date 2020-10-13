@@ -432,7 +432,7 @@ _run_cucumber() {
   # If there's no tty (e.g. we're running as a Jenkins job, pass -T to
   # docker-compose)
   local notty
-  notty=$(tty -s || echo '-T')
+  notty=$(tty -s || echo '-T' && true)
 
   arr=( $cucumber_env_args )
 

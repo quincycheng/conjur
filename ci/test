@@ -435,7 +435,7 @@ _run_cucumber() {
 
   # Process args.
   read -ra cucumber_env_vars <<< "$1"
-  cucumber_cmd=$2
+  read -ra cucumber_cmd <<< "$2"
 
   # Add the cucumber env vars that we always want to send.
   cucumber_env_vars+=(
@@ -454,7 +454,7 @@ _run_cucumber() {
   # it into two arguments below within shellcheck compliant double quotes.
   # This is what [@] is for.
   docker-compose "${run_cmd[@]}" "${cucumber_env_vars[@]}" \
-    cucumber -ec "$cucumber_cmd"
+    cucumber -ec "${cucumber_cmd[@]}"
 }
 
 _run_cucumber_tests() {

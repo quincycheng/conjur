@@ -405,9 +405,10 @@ _create_keycloak_user() {
 # args: <profile name> <extra services>
 # example: run_cucumber_tests 'policy'
 _setup_for_cucumber() {
+  local services
+
   if [[ -n "$1" ]]; then
     read -ra services <<< "$1"
-    shift
   fi
   
   # Create reports folders
@@ -458,27 +459,34 @@ _run_cucumber() {
 }
 
 _run_cucumber_tests() {
-  local profile="$1"
+  local profile
+  local services
+  local cucumber_env_args
+  local api_key
+
+  profile="$1"
+
   if [[ -n "$2" ]]; then
-    local services="$2"
+    services="$2"
   fi
+
   if [[ -n "$3" ]]; then
-    local cucumber_env_args="$3"
+    cucumber_env_args="$3"
   fi
 
   _setup_for_cucumber "$services"
   
   # Grab the admin user API key
-  local api_key=$(_get_api_key)
+  api_key=$(_get_api_key)
 
   # Run the tests
   _run_cucumber "$cucumber_env_args" \
-     "bundle exec cucumber \
+     bundle exec cucumber \
      --strict \
-     -p $profile \
-     --format json --out cucumber/$profile/cucumber_results.json \
-     --format html --out cucumber/$profile/cucumber_results.html \
-     --format junit --out cucumber/$profile/features/reports"
+     -p "$profile" \
+     --format json --out "cucumber/$profile/cucumber_results.json" \
+     --format html --out "cucumber/$profile/cucumber_results.html" \
+     --format junit --out "cucumber/$profile/features/reports"
 
   # Simplecov writes its report using an at_exit ruby hook. If the container
   # is killed before ruby, the report doesn't get written. So here we
@@ -488,12 +496,15 @@ _run_cucumber_tests() {
 }
 
 _run_cucumber_shell() {
-  if [[ ! -z "$1" ]]; then
-    local services="$1"; shift
+  local services
+  local api_key
+
+  if [[ -n "$1" ]]; then
+    services="$1"
   fi
   
   _setup_for_cucumber "$services"
-  local api_key=$(_get_api_key)
+  api_key=$(_get_api_key)
 
   _run_cucumber '' /bin/bash
 }

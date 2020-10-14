@@ -532,9 +532,12 @@ _subcommands_doc() {
 }
 
 _wait_for_pg() {
-  local svc="$1"; shift
+  local svc=$1
+  local pg_cmd=(psql -U postgres -c "select 1" -d postgres)
 
-  until docker-compose exec -T $svc psql -U postgres -c "select 1" -d postgres; do sleep 1; done
+  until docker-compose exec -T "$svc" "${pg_cmd[@]}"; do
+    sleep 1
+  done
 }
 
-_main "$(dirname $0)" "$@"
+_main "$(dirname "$0")" "$@"

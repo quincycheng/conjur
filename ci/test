@@ -26,12 +26,12 @@ export COMPOSE_PROJECT_NAME
 all() {
   : DOC - Run all tests
 
-  local old_ifs="$IFS"
-  IFS=$'\012'
-  local cmds=( $(_subcommands) )
-  IFS="$old_ifs"
-  for c in ${cmds[*]}; do
-    [[ $c = 'all' ]] && continue # no need to call recursively ;)
+  local cmds
+  mapfile -t cmds < <(_subcommands)
+
+  for c in "${cmds[@]}"; do
+    # Don't call recursively.
+    [[ $c = 'all' ]] && continue
     $c
   done
 }
@@ -105,9 +105,11 @@ help() {
   # be one command. _subcommands_doc returns the doc for each
   # command, separated by newlines, so IFS needs to be set for it,
   # too.
-  IFS=$'\012'
-  local cmds=( $(_subcommands) )
-  local doc=( $(_subcommands_doc) )
+  local cmds
+  local doc
+
+  mapfile -t cmds < <(_subcommands)
+  mapfile -t doc< <(_subcommands_doc)
   
   cat << EOF
 NAME

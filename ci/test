@@ -436,7 +436,8 @@ _run_cucumber() {
 
   # Process args.
   read -ra cucumber_env_vars <<< "$1"
-  read -ra cucumber_cmd <<< "$2"
+  shift
+  read -ra cucumber_cmd <<< "$@"
 
   # Add the cucumber env vars that we always want to send.
   cucumber_env_vars+=(

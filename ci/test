@@ -511,13 +511,15 @@ _run_cucumber_shell() {
 
 
 _start_conjur() {
-  if [[ ! -z "$1" ]]; then
-    local services="$1"; shift
+  local services
+
+  if [[ -n "$1" ]]; then
+    read -ra services <<< "$1"
   fi
   
   # Start Conjur and supporting services
-  typeset -p COMPOSE_PROJECT_NAME
-  docker-compose up --no-deps --no-recreate -d pg conjur $services
+  # typeset -p COMPOSE_PROJECT_NAME
+  docker-compose up --no-deps --no-recreate -d pg conjur "${services[@]}"
 }
 
 _subcommands() {

@@ -7,7 +7,11 @@
 # this script.  We should fix these errors and turn them on.
 set -e
 
+# TODO: Documentation of higher level dependencies.  Partial list:
+# 1. 
+
 export REPORT_ROOT=/src/conjur-server
+
 # Create default value if not set: allows compose to run in isolated namespace
 : "${COMPOSE_PROJECT_NAME:="$(openssl rand -hex 3)"}"
 export COMPOSE_PROJECT_NAME
@@ -27,7 +31,7 @@ all() {
   : DOC - Run all tests
 
   local cmds
-  mapfile -t cmds < <(_subcommands)
+  readarray -t cmds < <(_subcommands)
 
   for c in "${cmds[@]}"; do
     # Don't call recursively.
@@ -108,8 +112,8 @@ help() {
   local cmds
   local doc
 
-  mapfile -t cmds < <(_subcommands)
-  mapfile -t doc< <(_subcommands_doc)
+  readarray -t cmds < <(_subcommands)
+  readarray -t doc< <(_subcommands_doc)
   
   cat << EOF
 NAME
@@ -174,12 +178,12 @@ rspec_audit() {
 # Cleanup started containers, ok if they're already gone.
 
 
-# Build the conjur image. Note the '(' instead of '{'. Defining the
-# function this way means we'll run in a subshell. As a result, we
-# won't change the caller's working directory or scribble on the
-# environment.
+# Build the conjur image. Note the '(' instead of '{'. Defining the function
+# this way means we'll run in a subshell. As a result, we won't change the
+# caller's working directory or scribble on the environment.
 _build_conjur() (
-  local testdir="$1"; shift
+  local testdir=$1
+
   # Set release tag for building this version of Conjur
   cd "${testdir}/.."
   
@@ -313,21 +317,32 @@ _wait_for_keycloak() {
   return 1
 }
 
+# _main is always called with at least the first arg. When the 2nd arg, the
+# test suite, is omitted, it simply prints help.
+#
+# Args:
+# - test_dir: the directory of this script.
+# - test_set: the test suite to run.
 _main() {
-  local testdir="${1}"; shift
-  local testSet="${1}"
+  local test_dir=$1
+  local test_set=$2
+  export TAG
 
-  # If there are no arguments, show help
-  if [[ "${#@}" -eq 0 || "$1" == 'help' ]]; then
+  # Print help if the test suite is omitted, or if explicitly specified.
+  if [[ -z "$test_set" || "$test_set" == 'help' ]]; then
     help
     exit 1
   fi
-  # shellcheck disable=SC2064
-  [[ -z "$KEEP_CONTAINERS" ]] && trap "_finish ${testSet}" EXIT
 
-  export TAG=$(_build_conjur "$testdir")
-  cd "${testdir}"
-  "$@"
+  if [[ -z "$KEEP_CONTAINERS" ]]; then
+    # Note: We want $test_set to expand now, not when EXIT is trapped.
+    # shellcheck disable=SC2064
+    trap "_finish $test_set" EXIT
+  fi
+
+  TAG=$(_build_conjur "$test_dir")
+  cd "${test_dir}"
+  "$test_set"
 }
 
 _prepare_env_auth_ldap() {

@@ -429,21 +429,32 @@ _get_api_key() {
 # run cucumber, using $1 to initialize the environment. $1 can be
 # empty, but it must be present.
 _run_cucumber() {
-  local cucumber_env_args="$1"; shift
-  # If there's no tty (e.g. we're running as a Jenkins job, pass -T to
-  # docker-compose)
-  # local notty
-  # This flag will be -T or the empty string
-  # tty_flag=$(tty -s || echo '-T')
-  run_cmd=(run)
+  local cucumber_env_vars
+  local cucumber_cmd
+  local run_cmd
+
+  # Process args.
+  read -ra cucumber_env_vars <<< "$1"
+  cucumber_cmd=$2
+
+  # Add the cucumber env vars that we always want to send.
+  cucumber_env_vars+=(
+    -e "CONJUR_AUTHN_API_KEY=$api_key"
+    -e "CUCUMBER_NETWORK=$(_find_cucumber_network)"
+  )
+
+  # If there's no tty (e.g. we're running as a Jenkins job), pass -T to
+  # docker-compose.
+  run_cmd=(run --no-deps --rm)
   if ! tty -s; then
     run_cmd+=(-T)
   fi
 
-  docker-compose "${run_cmd[@]}" --no-deps --rm $cucumber_env_args \
-     -e "CONJUR_AUTHN_API_KEY=$api_key" \
-     -e "CUCUMBER_NETWORK=$(_find_cucumber_network)" \
-     cucumber -ec "$@"
+  # Note: Our "command + possible flag" run_cmd is an array, and we destructure
+  # it into two arguments below within shellcheck compliant double quotes.
+  # This is what [@] is for.
+  docker-compose "${run_cmd[@]}" "${cucumber_env_vars[@]}" \
+    cucumber -ec "$cucumber_cmd"
 }
 
 _run_cucumber_tests() {

@@ -473,7 +473,7 @@ _run_cucumber() {
   # it into two arguments below within shellcheck compliant double quotes.
   # This is what [@] is for.
   docker-compose "${run_cmd[@]}" "${cucumber_env_vars[@]}" \
-    cucumber -ec "${cucumber_cmd[@]}"
+    cucumber -ec bundle
 }
 
 _run_cucumber_tests() {

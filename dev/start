@@ -100,6 +100,7 @@ while true ; do
   esac
 done
 
+docker pull cyberark/phusion-ruby-fips:0.11-latest
 docker-compose build
 
 if [ ! -f data_key ]; then

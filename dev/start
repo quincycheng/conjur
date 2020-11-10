@@ -100,7 +100,9 @@ while true ; do
   esac
 done
 
+# Ensure we have the latest version as `docker build .` uses the locally cached version
 docker pull cyberark/phusion-ruby-fips:0.11-latest
+
 docker-compose build
 
 if [ ! -f data_key ]; then

@@ -76,6 +76,7 @@ RjvSxre4Xg2qlI9Laybb4oZ4g6DI8hRbL0VdFAsveg6SXg2RxgJcXeJUFw==
       end.to raise_error(OpenSSL::X509::CertificateError) do |exn|
         expect(exn.message).to include bad_cert
       end
+      expect(1).to eq(2)
     end
   end
 

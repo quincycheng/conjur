@@ -32,7 +32,7 @@ Feature: Azure Authenticator - Different Hosts can authenticate with Azure authe
     And I grant group "conjur/authn-azure/prod/apps" to host "user-assigned-identity-app"
     And I fetch a user-assigned-identity Azure access token from inside machine
     When I authenticate via Azure with token as host "user-assigned-identity-app"
-    Then host "user-assigned-identity-app" has been authorized by Conjur
+    Then host "user-assigned-identity-appXXXXX" has been authorized by Conjur
 
   Scenario: Host with system-assigned-identity annotation is authorized
     And I have host "system-assigned-identity-app"

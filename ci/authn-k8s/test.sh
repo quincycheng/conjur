@@ -12,8 +12,8 @@ function main() {
   setupTestEnvironment $PLATFORM
 
   createNginxCert
-    
-  buildDockerImages
+
+  #buildDockerImages
 
   case "$PLATFORM" in
     gke)
@@ -31,7 +31,8 @@ function main() {
 function setupTestEnvironment() {
   local platform="$1"
 
-  export CONJUR_AUTHN_K8S_TEST_NAMESPACE="test-$(uuidgen | tr "[:upper:]" "[:lower:]")"
+  #export CONJUR_AUTHN_K8S_TEST_NAMESPACE="test-$(uuidgen | tr "[:upper:]" "[:lower:]")"
+  export CONJUR_AUTHN_K8S_TEST_NAMESPACE="test-moti-k8s"
 
   case "$PLATFORM" in
     gke)
@@ -74,11 +75,12 @@ function createNginxCert() {
 }
 
 function buildDockerImages() {
-  conjur_version=$(echo "$(< ../../VERSION)-$(git rev-parse --short=8 HEAD)")
+  #conjur_version=$(echo "$(< ../../VERSION)-$(git rev-parse --short=8 HEAD)")
+  conjur_version="MOTI"
   DOCKER_REGISTRY_PATH="registry.tld/test"
 
-  docker pull $DOCKER_REGISTRY_PATH/conjur:$conjur_version
-  docker pull $DOCKER_REGISTRY_PATH/conjur-test:$conjur_version
+  #docker pull $DOCKER_REGISTRY_PATH/conjur:$conjur_version
+  #docker pull $DOCKER_REGISTRY_PATH/conjur-test:$conjur_version
 
   docker tag $DOCKER_REGISTRY_PATH/conjur:$conjur_version $CONJUR_AUTHN_K8S_TAG
 
@@ -99,6 +101,14 @@ function buildDockerImages() {
 }
 
 function test_gke() {
+
+  # keep changeset as tar file and copy to localrun folder
+  cd ../..
+  tar -zcvf ./ci/authn-k8s/localrun/project_copy.tar `git diff --name-only`
+  #mv -f /tmp/project_copy.tar $PWD/ci/authn-k8s/localrun/project_copy.tar
+  cd -
+
+
   docker run --rm \
     -e CONJUR_AUTHN_K8S_TAG \
     -e CONJUR_TEST_AUTHN_K8S_TAG \

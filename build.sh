@@ -9,7 +9,8 @@ set -ex
 # shellcheck disable=SC1091
 . version_utils.sh
 
-TAG="$(version_tag)"
+#TAG="$(version_tag)"
+TAG="MOTI"
 jenkins=false # Running on Jenkins (vs local dev machine)
 REGISTRY_TEST_PATH="registry.tld/test"
 
@@ -60,7 +61,7 @@ image_needs_building() {
     [[ "$(docker images -q "$1" 2> /dev/null)" == "" ]]
 }
 
-if image_needs_building "conjur:$TAG"; then
+#if image_needs_building "conjur:$TAG"; then
   echo "Building image conjur:$TAG"
   docker build -t "conjur:$TAG" .
   flatten "conjur:$TAG"
@@ -71,29 +72,29 @@ if image_needs_building "conjur:$TAG"; then
 # thus reducing time and using best practice of testing same artifact
 # since conjur-test image is not flatten and based on conjur we are also reusing layers
 # nevertheless, images has "test" prefix to allow future aggregated purging
-  echo "Pushing image $REGISTRY_TEST_PATH/conjur:$TAG"
-  docker push "$REGISTRY_TEST_PATH/conjur:$TAG"
-fi
+#  echo "Pushing image $REGISTRY_TEST_PATH/conjur:$TAG"
+#  docker push "$REGISTRY_TEST_PATH/conjur:$TAG"
+#fi
 
-if image_needs_building "conjur-test:$TAG"; then
+#if image_needs_building "conjur-test:$TAG"; then
   echo "Building image conjur-test:$TAG container"
   docker build --build-arg "VERSION=$TAG" -t "conjur-test:$TAG" -f Dockerfile.test .
   docker tag "conjur-test:$TAG" "$REGISTRY_TEST_PATH/conjur-test:$TAG"
 
-  echo "Pushing image $REGISTRY_TEST_PATH/conjur-test:$TAG"
-  docker push "$REGISTRY_TEST_PATH/conjur-test:$TAG"
-fi
+  #### echo "Pushing image $REGISTRY_TEST_PATH/conjur-test:$TAG"
+  #### docker push "$REGISTRY_TEST_PATH/conjur-test:$TAG"
+#fi
 
-if image_needs_building "conjur-ubi:$TAG"; then
+####if image_needs_building "conjur-ubi:$TAG"; then
   echo "Building image conjur-ubi:$TAG container"
   docker build --build-arg "VERSION=$TAG" -t "conjur-ubi:$TAG" -f Dockerfile.ubi .
   docker tag "conjur-ubi:$TAG" "$REGISTRY_TEST_PATH/conjur-ubi:$TAG"
 
-  echo "Pushing image $REGISTRY_TEST_PATH/conjur-ubi:$TAG"
-  docker push "$REGISTRY_TEST_PATH/conjur-ubi:$TAG"
-fi
+  ####echo "Pushing image $REGISTRY_TEST_PATH/conjur-ubi:$TAG"
+  #####docker push "$REGISTRY_TEST_PATH/conjur-ubi:$TAG"
+####fi
 
-if [[ $jenkins = false ]]; then
+#if [[ $jenkins = false ]]; then
   echo "Building image conjur-dev"
   docker build -t conjur-dev -f dev/Dockerfile.dev .
-fi
+#fi

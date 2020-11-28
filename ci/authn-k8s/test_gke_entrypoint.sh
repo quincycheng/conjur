@@ -55,11 +55,11 @@ function finish {
   echo '-----'
   kubectl --ignore-not-found=true delete namespace $CONJUR_AUTHN_K8S_TEST_NAMESPACE
 
-  delete_image $CONJUR_TEST_AUTHN_K8S_TAG
-  delete_image $CONJUR_AUTHN_K8S_TAG
-  delete_image $INVENTORY_TAG
-  delete_image $INVENTORY_BASE_TAG
-  delete_image $NGINX_TAG
+#  delete_image $CONJUR_TEST_AUTHN_K8S_TAG
+#  delete_image $CONJUR_AUTHN_K8S_TAG
+#  delete_image $INVENTORY_TAG
+#  delete_image $INVENTORY_BASE_TAG
+#  delete_image $NGINX_TAG
 }
 trap finish EXIT
 
@@ -73,10 +73,10 @@ function main() {
   initialize_gke
   createNamespace
 
-  pushDockerImages
+  #pushDockerImages
 
   launchConjurMaster
-  
+
   copyNginxSSLCert
   
   copyConjurPolicies
@@ -136,6 +136,7 @@ function launchConjurMaster() {
 
   kubectl wait --for=condition=Ready pod/$conjur_pod --timeout=5m
 
+  /src/localrun/on_lanuch_conjur_master.sh
   # wait for the 'conjurctl server' entrypoint to finish
   local wait_command="while ! curl --silent --head --fail localhost:80 > /dev/null; do sleep 1; done"
   kubectl exec $conjur_pod -- bash -c "$wait_command"
@@ -163,7 +164,7 @@ function loadConjurPolicies() {
   echo 'Loading the policies and data'
 
   cli_pod=$(retrieve_pod conjur-cli)
-  
+
   kubectl exec $cli_pod -- conjur init -u conjur -a cucumber
   sleep 5
   kubectl exec $cli_pod -- conjur authn login -u admin -p $API_KEY
@@ -191,6 +192,8 @@ function runTests() {
   echo 'Running tests'
 
   conjurcmd mkdir -p /opt/conjur-server/output
+
+  /src/localrun/on_run_tests.sh
 
   echo "./bin/cucumber K8S_VERSION=1.7 PLATFORM=kubernetes --no-color --format pretty --format junit --out /opt/conjur-server/output -r ./cucumber/kubernetes/features/step_definitions/ -r ./cucumber/kubernetes/features/support/world.rb -r ./cucumber/kubernetes/features/support/hooks.rb -r ./cucumber/kubernetes/features/support/conjur_token.rb --tags ~@skip ./cucumber/kubernetes/features" | cucumbercmd -i bash
 }

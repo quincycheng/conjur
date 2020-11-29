@@ -103,10 +103,9 @@ function buildDockerImages() {
 function test_gke() {
 
   # keep changeset as tar file and copy to localrun folder
-  cd ../..
-  tar -zcvf ./ci/authn-k8s/localrun/project_copy.tar `git diff --name-only`
-  #mv -f /tmp/project_copy.tar $PWD/ci/authn-k8s/localrun/project_copy.tar
-  cd -
+  pushd ../..
+  tar -zcvf ./ci/authn-k8s/localrun/changeset.tar `git diff --name-only`
+  popd
 
 
   docker run --rm \
